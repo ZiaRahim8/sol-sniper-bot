@@ -10,7 +10,7 @@ import { PoolCache } from "../caches";
 import { WAIT_FOR_RETRY_MS } from "../configs";
 import BN from "bn.js";
 import { DB } from "../db";
-import { TrackObject } from "../db/db.types";
+import { TrackObject, ITrade } from "../db/db.types";
 import _omit from 'lodash.omit';
 import { toDecimalPlaces } from "../utils/number";
 
@@ -119,6 +119,8 @@ export class Bot {
               url: `https://solana.fm/tx/${result.signature}?cluster=mainnet-alpha&origin=solflare`,
             }, `[BUY] Confirmed buy tx`);
 
+            await this.recordBuy(poolState.baseMint.toBase58(), amountIn, Number(result.minAmountOut || 0));
+
             break;
           }
 
@@ -218,6 +220,8 @@ export class Bot {
               },
               `[SELL] Confirmed sell tx`,
             );
+            await this.recordSell(rawAccount.mint.toBase58(), Number(result.minAmountOut || 0));
+            await this.logWinRate();
             return true;
           }
 
@@ -429,13 +433,48 @@ export class Bot {
 
       const { txId, signedTx } = await execute({ skipPreflight: true });
 
+      let response: IConfirmResponse;
       if (this.isJito) {
-        return this.executor.execAndConfirm(signedTx, lastestBlockHash, this.config.wallet);
+        response = await this.executor.execAndConfirm(signedTx, lastestBlockHash, this.config.wallet);
       } else {
-        return this.executor.execAndConfirm(txId, lastestBlockHash)
+        response = await this.executor.execAndConfirm(txId, lastestBlockHash);
       }
+
+      return { ...response, minAmountOut: minAmountOut.toString() };
     } catch (e: any) {
       throw Error(`ERROR ${e.toString()}`);
     }
+  }
+
+  private async recordBuy(baseMint: string, amountIn: number, baseAmount: number) {
+    const trade: ITrade = {
+      baseMint,
+      buyAmount: amountIn,
+      baseAmount: baseAmount.toString(),
+      buyTimestamp: Date.now(),
+    };
+
+    await this.db.set<"trades">("trades", trade, baseMint);
+  }
+
+  private async recordSell(baseMint: string, sellAmount: number) {
+    const trade = await this.db.get<"trades">("trades", baseMint);
+    if (!trade) return;
+
+    trade.sellAmount = sellAmount;
+    trade.sellTimestamp = Date.now();
+    trade.profit = sellAmount - trade.buyAmount;
+    await this.db.set<"trades">("trades", trade, baseMint);
+  }
+
+  private async logWinRate() {
+    const trades = (await this.db.getCollection<"trades">("trades")) || {};
+    const all = Object.values(trades);
+    const closed = all.filter((t) => t.sellAmount !== undefined);
+    if (closed.length === 0) return;
+
+    const wins = closed.filter((t) => (t.profit || 0) > 0).length;
+    const winRate = ((wins / closed.length) * 100).toFixed(2);
+    logger.info(`Current win rate: ${winRate}% (${wins}/${closed.length})`);
   }
 }
