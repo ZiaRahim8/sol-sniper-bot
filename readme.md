@@ -2,11 +2,13 @@
 
 This bot allows you to automate your crypto trading strategies on the Solana blockchain. The bot is currently written in JS and uses the [Raydium V2 SDK](https://github.com/raydium-io/raydium-sdk-V2) to execute trades.
 Basic logics here is listen new pool created in Raydium AMM and if that token matches the filter sets based on the predefined parameters, it executes strategies set by the user.
-Simply the bot will periodity calculate the price and if it hits TP/SL or the `PRICE_CHECK_DURATION` timedout - bot will sell the token 
+Simply the bot will periodity calculate the price and if it hits TP/SL or the `PRICE_CHECK_DURATION` timedout - bot will sell the token
 (Because there are many rugged pull here, it's better to sell tokens before the liquidity is too low, when the `amoutOut` is too small you can not sell that token anymore, or can't redeem the rental fee `0.002 SOL` by default);
 
 ## Disclaimer
+
 > 🛑 This bot can lead to loss of your funds, use at your own risk. Start with small amounts and protect your keys.
+
 - This Bot is provided as is, for learning purposes.
 - This bot is provided without any warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose, and non-infringement.
 - In no event shall the authors be liable for any claim, damages, or other liability.
@@ -42,7 +44,7 @@ To run the script you need to:
 - `ONE_TOKEN_AT_A_TIME` - Set to `true` to process buying one token at a time.
 - `COMPUTE_UNIT_LIMIT` - Compute limit used to calculate fees.
 - `COMPUTE_UNIT_PRICE` - Compute price used to calculate fees.
-- `TRANSACTION_EXECUTOR` -  default or jito
+- `TRANSACTION_EXECUTOR` - default or jito
 - `CUSTOM_FEE` - If using warp or jito executors this value will be used for transaction fees instead of `COMPUTE_UNIT_LIMIT` and `COMPUTE_UNIT_LIMIT`
   - Minimum value is 0.0001 SOL, but recommend using 0.006 SOL or above
   - On top of this fee, minimal solana network fee will be applied
@@ -86,7 +88,12 @@ To run the script you need to:
 - `MAX_POOL_SIZE` - Bot will buy only if the pool size is less than or equal the specified amount.
   - Set `0` to disable.
 
+### Win rate tracking
+
+The bot records each trade in `store/db.json` and reports the current win rate after every sell. A win is counted when a trade closes with profit. This statistic is for reference only and does not guarantee future performance.
+
 ### Some tips 👀
+
 - 🔨 The bot is a Tool, not a holy grail that will make you rich just by running it. If you don't know what you are doing, you WILL lose money.
 - RPC / Network speed & good trading strategy is the key to success. You can speed up the bor but disabling AMMS not being used or too slow.
 - Not everything is so obvious. eg. a larger trade size can lead to smaller profits than a lower trade size.
